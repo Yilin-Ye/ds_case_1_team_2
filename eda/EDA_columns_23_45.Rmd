@@ -1,0 +1,351 @@
+---
+title: "EDA_columns_23_45"
+author: "Connor Mignone"
+date: "9/9/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(purrr)
+```
+
+```{r}
+dataset <- read_excel("dataset.xlsx")
+positive_only <- dataset %>% filter(`SARS-Cov-2 exam result` == "positive")
+```
+
+column 23 - Influenza A
+```{r}
+
+dataset$`Influenza A` <- as.factor(dataset$`Influenza A`)
+positive_only$`Influenza A` <- as.factor(positive_only$`Influenza A`)
+summary(dataset$`Influenza A`)
+summary(positive_only$`Influenza A`)
+
+ggplot(dataset)+
+  geom_bar(aes(`Influenza A`))
+
+ggplot(positive_only)+
+  geom_bar(aes(`Influenza A`))
+
+```
+
+column 24 - Influenza B
+
+```{r}
+
+dataset$`Influenza B` <- as.factor(dataset$`Influenza B`)
+positive_only$`Influenza B` <- as.factor(positive_only$`Influenza B`)
+summary(dataset$`Influenza B`)
+summary(positive_only$`Influenza B`)
+
+ggplot(dataset)+
+  geom_bar(aes(`Influenza B`))
+
+ggplot(positive_only)+
+  geom_bar(aes(`Influenza B`))
+
+```
+
+
+column 25 - Parainfluenza 1
+```{r}
+
+dataset$`Parainfluenza 1` <- as.factor(dataset$`Parainfluenza 1`)
+positive_only$`Parainfluenza 1` <- as.factor(positive_only$`Parainfluenza 1`)
+summary(dataset$`Parainfluenza 1`)
+summary(positive_only$`Parainfluenza 1`)
+
+ggplot(dataset)+
+  geom_bar(aes(`Parainfluenza 1`))
+
+ggplot(positive_only)+
+  geom_bar(aes(`Parainfluenza 1`))
+
+```
+column 26 - CoronavirusNL63
+```{r}
+
+dataset$`CoronavirusNL63` <- as.factor(dataset$`CoronavirusNL63`)
+positive_only$`CoronavirusNL63` <- as.factor(positive_only$`CoronavirusNL63`)
+summary(dataset$`CoronavirusNL63`)
+summary(positive_only$`CoronavirusNL63`)
+
+ggplot(dataset)+
+  geom_bar(aes(`CoronavirusNL63`))
+
+ggplot(positive_only)+
+  geom_bar(aes(`CoronavirusNL63`))
+
+```
+column 27 - Rhinovirus/Enterovirus
+```{r}
+
+dataset$`Rhinovirus/Enterovirus` <- as.factor(dataset$`Rhinovirus/Enterovirus`)
+positive_only$`Rhinovirus/Enterovirus` <- as.factor(positive_only$`Rhinovirus/Enterovirus`)
+summary(dataset$`Rhinovirus/Enterovirus`)
+summary(positive_only$`Rhinovirus/Enterovirus`)
+
+ggplot(dataset)+
+  geom_bar(aes(`Rhinovirus/Enterovirus`))
+
+ggplot(positive_only)+
+  geom_bar(aes(`Rhinovirus/Enterovirus`))
+
+```
+28 - Mycoplasma pneumoniae
+
+#############can drop the mycoplasma pneumoniae column###############
+```{r}
+
+dataset$`Mycoplasma pneumoniae` <- as.factor(dataset$`Mycoplasma pneumoniae`)
+positive_only$`Mycoplasma pneumoniae` <- as.factor(positive_only$`Mycoplasma pneumoniae`)
+summary(dataset$`Mycoplasma pneumoniae`)
+summary(positive_only$`Mycoplasma pneumoniae`)
+
+ggplot(dataset)+
+  geom_bar(aes(`Mycoplasma pneumoniae`))
+
+ggplot(positive_only)+
+  geom_bar(aes(`Mycoplasma pneumoniae`))
+
+```
+29 - Coronavirus HKU1
+```{r}
+
+dataset$`Coronavirus HKU1` <- as.factor(dataset$`Coronavirus HKU1`)
+positive_only$`Coronavirus HKU1` <- as.factor(positive_only$`Coronavirus HKU1`)
+summary(dataset$`Coronavirus HKU1`)
+summary(positive_only$`Coronavirus HKU1`)
+
+ggplot(dataset)+
+  geom_bar(aes(`Coronavirus HKU1`))
+
+ggplot(positive_only)+
+  geom_bar(aes(`Coronavirus HKU1`))
+
+```
+30 - Parainfluenza 3
+```{r}
+
+dataset$`Parainfluenza 3` <- as.factor(dataset$`Parainfluenza 3`)
+positive_only$`Parainfluenza 3` <- as.factor(positive_only$`Parainfluenza 3`)
+summary(dataset$`Parainfluenza 3`)
+summary(positive_only$`Parainfluenza 3`)
+
+ggplot(dataset)+
+  geom_bar(aes(`Parainfluenza 3`))
+
+ggplot(positive_only)+
+  geom_bar(aes(`Parainfluenza 3`))
+
+```
+
+31 - Clamydophila pneumoniae
+######Empty can drop##########
+```{r}
+
+dataset$`Clamydophila pneumoniae` <- as.factor(dataset$`Clamydophila pneumoniae`)
+positive_only$`Clamydophila pneumoniae` <- as.factor(positive_only$`Clamydophila pneumoniae`)
+summary(dataset$`Clamydophila pneumoniae`)
+summary(positive_only$`Clamydophila pneumoniae`)
+
+ggplot(dataset)+
+  geom_bar(aes(`Clamydophila pneumoniae`))
+
+ggplot(positive_only)+
+  geom_bar(aes(`Clamydophila pneumoniae`))
+
+```
+
+32 - Adenovirus
+```{r}
+
+dataset$`Adenovirus` <- as.factor(dataset$`Adenovirus`)
+positive_only$`Adenovirus` <- as.factor(positive_only$`Adenovirus`)
+summary(dataset$`Adenovirus`)
+summary(positive_only$`Adenovirus`)
+
+ggplot(dataset)+
+  geom_bar(aes(`Adenovirus`))
+
+ggplot(positive_only)+
+  geom_bar(aes(`Adenovirus`))
+
+```
+33 - Parainfluenza 4
+```{r}
+
+dataset$`Parainfluenza 4` <- as.factor(dataset$`Parainfluenza 4`)
+positive_only$`Parainfluenza 4` <- as.factor(positive_only$`Parainfluenza 4`)
+summary(dataset$`Parainfluenza 4`)
+summary(positive_only$`Parainfluenza 4`)
+
+ggplot(dataset)+
+  geom_bar(aes(`Parainfluenza 4`))
+
+ggplot(positive_only)+
+  geom_bar(aes(`Parainfluenza 4`))
+
+```
+34 - Coronavirus229E
+```{r}
+
+dataset$`Coronavirus229E` <- as.factor(dataset$`Coronavirus229E`)
+positive_only$`Coronavirus229E` <- as.factor(positive_only$`Coronavirus229E`)
+summary(dataset$`Coronavirus229E`)
+summary(positive_only$`Coronavirus229E`)
+
+ggplot(dataset)+
+  geom_bar(aes(`Coronavirus229E`))
+
+ggplot(positive_only)+
+  geom_bar(aes(`Coronavirus229E`))
+
+```
+35 - CoronavirusOC43
+```{r}
+
+dataset$`CoronavirusOC43` <- as.factor(dataset$`CoronavirusOC43`)
+positive_only$`CoronavirusOC43` <- as.factor(positive_only$`CoronavirusOC43`)
+summary(dataset$`CoronavirusOC43`)
+summary(positive_only$`CoronavirusOC43`)
+
+ggplot(dataset)+
+  geom_bar(aes(`CoronavirusOC43`))
+
+ggplot(positive_only)+
+  geom_bar(aes(`CoronavirusOC43`))
+
+```
+36 - Inf A H1N1 2009
+```{r}
+
+dataset$`Inf A H1N1 2009` <- as.factor(dataset$`Inf A H1N1 2009`)
+positive_only$`Inf A H1N1 2009` <- as.factor(positive_only$`Inf A H1N1 2009`)
+summary(dataset$`Inf A H1N1 2009`)
+summary(positive_only$`Inf A H1N1 2009`)
+
+ggplot(dataset)+
+  geom_bar(aes(`Inf A H1N1 2009`))
+
+ggplot(positive_only)+
+  geom_bar(aes(`Inf A H1N1 2009`))
+
+```
+37 - Parainfluenza 2
+```{r}
+
+dataset$`Parainfluenza 2` <- as.factor(dataset$`Parainfluenza 2`)
+positive_only$`Parainfluenza 2` <- as.factor(positive_only$`Parainfluenza 2`)
+summary(dataset$`Parainfluenza 2`)
+summary(positive_only$`Parainfluenza 2`)
+
+ggplot(dataset)+
+  geom_bar(aes(`Parainfluenza 2`))
+
+ggplot(positive_only)+
+  geom_bar(aes(`Parainfluenza 2`))
+
+```
+38 - Metapeumovirus
+#####empty column########
+```{r}
+
+dataset$`Metapeumovirus` <- as.factor(dataset$`Metapeumovirus`)
+positive_only$`Metapeumovirus` <- as.factor(positive_only$`Metapeumovirus`)
+summary(dataset$`Metapeumovirus`)
+summary(positive_only$`Metapeumovirus`)
+
+ggplot(dataset)+
+  geom_bar(aes(`Metapeumovirus`))
+
+ggplot(positive_only)+
+  geom_bar(aes(`Metapeumovirus`))
+
+```
+39 - Neutrophils
+```{r}
+
+
+summary(dataset$`Neutrophils`)
+summary(positive_only$`Neutrophils`)
+
+ggplot(dataset)+
+  geom_histogram(aes(`Neutrophils`), bins = 20)
+
+ggplot(positive_only)+
+  geom_histogram(aes(`Neutrophils`))
+
+```
+41 - Urea
+```{r}
+
+
+summary(dataset$`Urea`)
+summary(positive_only$`Urea`)
+
+ggplot(dataset)+
+  geom_histogram(aes(`Urea`), bins = 20)
+
+ggplot(positive_only)+
+  geom_histogram(aes(`Urea`), bins = 10)
+
+```
+42 - Proteina C reativa mg/dL
+```{r}
+
+summary(dataset$`Proteina C reativa mg/dL`)
+summary(positive_only$`Proteina C reativa mg/dL`)
+
+ggplot(dataset)+
+  geom_histogram(aes(`Proteina C reativa mg/dL`), bins = 20)
+
+ggplot(positive_only)+
+  geom_histogram(aes(`Proteina C reativa mg/dL`), bins = 20)
+
+```
+43 - Creatinine
+```{r}
+
+summary(dataset$`Creatinine`)
+summary(positive_only$`Creatinine`)
+
+ggplot(dataset)+
+  geom_histogram(aes(`Creatinine`), bins = 10)
+
+ggplot(positive_only)+
+  geom_histogram(aes(`Creatinine`), bins = 10)
+
+```
+44 - Potassium
+```{r}
+
+summary(dataset$`Potassium`)
+summary(positive_only$`Potassium`)
+
+ggplot(dataset)+
+  geom_histogram(aes(`Potassium`), bins = 10)
+
+ggplot(positive_only)+
+  geom_histogram(aes(`Potassium`), bins = 10)
+
+```
+45 - Sodium
+```{r}
+
+summary(dataset$`Sodium`)
+summary(positive_only$`Sodium`)
+
+ggplot(dataset)+
+  geom_histogram(aes(`Sodium`), bins = 10)
+
+ggplot(positive_only)+
+  geom_histogram(aes(`Sodium`), bins = 10)
+
+```
