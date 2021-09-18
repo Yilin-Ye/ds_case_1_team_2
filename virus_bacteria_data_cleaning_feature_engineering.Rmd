@@ -1,0 +1,104 @@
+---
+title: "virus_bacteria_feature_engineering"
+author: "Connor Mignone"
+date: "9/16/2021"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(purrr)
+```
+
+```{r}
+dataset <- read_excel("C://Users/Connor\ Mignone/Desktop/Data_Science_Fall_2021/Case Studies/ds_case_1_team_2/data/dataset.xlsx")
+positive_only <- dataset %>% filter(`SARS-Cov-2 exam result` == "positive")
+```
+
+
+```{r}
+virus_lab_list = c('Influenza A','Influenza B','Parainfluenza 1','CoronavirusNL63','Rhinovirus/Enterovirus','Coronavirus HKU1','Parainfluenza 3','Chlamydophila pneumoniae','Adenovirus','Parainfluenza 4','Coronavirus229E','CoronavirusOC43','Inf A H1N1 2009','Bordetella pertussis','Metapneumovirus','Parainfluenza 2')
+```
+
+
+# if lab was taken,
+number of labs taken is pointless because only one observation had less than 16 labs taken if they had labs taken
+
+whole dataset
+```{r}
+
+
+virus_labs_whole <- dataset %>% select(virus_lab_list)
+lab_taken_whole <- as.data.frame(virus_labs_whole)
+lab_taken_whole[is.na(lab_taken_whole)]<-0
+lab_taken_whole[lab_taken_whole=="not_detected"] <- 1
+lab_taken_whole[lab_taken_whole=="detected"] <- 1
+
+lab_taken_whole[sapply(lab_taken_whole, is.character)] <- lapply(lab_taken_whole[sapply(lab_taken_whole, is.character)], 
+                                       as.numeric)
+lab_taken_whole <- lab_taken_whole %>% mutate(num_virus_labs = rowSums(lab_taken_whole))
+lab_taken_whole <- lab_taken_whole %>% mutate(virus_lab_taken = if_else(num_virus_labs == 0, 0, 1))
+
+```
+positive only
+```{r}
+lab_taken_positive <- positive_only %>% select(virus_lab_list)
+lab_taken_positive <- as.data.frame(lab_taken_positive)
+lab_taken_positive[is.na(lab_taken_positive)]<-0
+lab_taken_positive[lab_taken_positive=="not_detected"] <- 1
+lab_taken_positive[lab_taken_positive=="detected"] <- 1
+
+lab_taken_positive[sapply(lab_taken_positive, is.character)] <- lapply(lab_taken_positive[sapply(lab_taken_positive, is.character)], 
+                                       as.numeric)
+lab_taken_positive <- lab_taken_positive %>% mutate(num_virus_labs = rowSums(lab_taken_positive))
+lab_taken_positive <- lab_taken_positive %>% mutate(virus_lab_taken = if_else(num_virus_labs == 0, 0, 1))
+
+```
+
+# if virus or bacteria was dectected other than COVID-19
+whole dataset
+```{r}
+
+
+labs_detected_whole <- dataset %>% select(virus_lab_list)
+labs_detected_whole <- as.data.frame(labs_detected_whole)
+labs_detected_whole[is.na(labs_detected_whole)]<-0
+labs_detected_whole[labs_detected_whole=="not_detected"] <- 0
+labs_detected_whole[labs_detected_whole=="detected"] <- 1
+
+labs_detected_whole[sapply(labs_detected_whole, is.character)] <- lapply(labs_detected_whole[sapply(labs_detected_whole, is.character)], 
+                                       as.numeric)
+labs_detected_whole <- labs_detected_whole %>% mutate(num_virus_or_bacteria_dectected = rowSums(labs_detected_whole))
+
+```
+positive only
+```{r}
+labs_detected_positive <- positive_only %>% select(virus_lab_list)
+labs_detected_positive <- as.data.frame(labs_detected_positive)
+labs_detected_positive[is.na(labs_detected_positive)]<-0
+labs_detected_positive[labs_detected_positive=="not_detected"] <- 0
+labs_detected_positive[labs_detected_positive=="detected"] <- 1
+
+labs_detected_positive[sapply(labs_detected_positive, is.character)] <- lapply(labs_detected_positive[sapply(labs_detected_positive, is.character)], 
+                                       as.numeric)
+labs_detected_positive <- labs_detected_positive %>% mutate(num_virus_or_bacteria_dectected = rowSums(labs_detected_positive))
+```
+
+joining features and writing a CSV for the python people
+```{r}
+
+positive_only_w_id <- cbind(positive_only[1], lab_taken_positive[18], labs_detected_positive[17])
+
+whole_w_id <- cbind(dataset[1], lab_taken_whole[18], labs_detected_whole[17])
+
+write.csv(positive_only_w_id, file = "data/positive_virus_bac_labs.csv")
+write.csv(whole_w_id, file = "data/whole_virus_bac_labs.csv")
+```
+
+
+
