@@ -1,0 +1,18 @@
+
+
+
+```{r}
+data <- read_excel('/home/tonnar/Fall2021/Class/Case/ds_case_1_team_2/data/dataset.xlsx')
+urine <- data %>% select(starts_with("Urine")) %>% filter(data$`SARS-Cov-2 exam result` == 'positive')
+
+total_na <- 558 - data.frame(colSums(is.na(urine)))
+
+urine_non_na <- urine %>% drop_na(`Urine - Color`)
+
+urine <- urine %>% mutate(urine_test = ifelse(rowSums(is.na(urine)) < 18, 1, 0))
+
+```
+
+
+
+
