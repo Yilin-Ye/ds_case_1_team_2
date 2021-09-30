@@ -1,0 +1,57 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+```{r message=FALSE, warning=FALSE}
+library(tidymodels)
+library(tidyverse)
+```
+
+
+```{r}
+data <- read_csv("Fall2021/Class/Case/ds_case_1_team_2/data/data_combined_sampling.csv")
+```
+
+
+```{r}
+data_split <- initial_split(data, prop = 3/4)
+data_train <- training(data_split)
+data_test <- testing(data_split)
+data_cv <- vfold_cv(data_train,  v = 3)
+```
+
+
+```{r}
+hospital_recipe <- recipe(y_bin ~ ., data = data_train)
+```
+
+
+```{r}
+knn_model <- nearest_neighbor(
+  mode = "regression",
+  engine = "kknn",
+  neighbors = tune(),
+  weight_func = NULL,
+  dist_power = NULL
+)
+```
+
+
+```{r}
+knn_wf <- workflow() %>% 
+          add_model(knn_model) %>% 
+          add_recipe(hospital_recipe)
+```
+
+
+```{r}
+k_grid <- tibble(neighbors = c(10, 20, 30, 50, 75, 100, 125, 150))
+```
+
+
+```{r}
+knn_tuning <- knn_wf %>% 
+              tune_grid(resamples = data_cv,
+                         grid = k_grid)
+```
+
