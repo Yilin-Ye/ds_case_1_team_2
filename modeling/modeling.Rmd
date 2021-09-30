@@ -1,0 +1,88 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(janitor)
+library(ggplot2)
+library(ROSE)
+
+data <- read.csv('./data/data_original_sampling.csv') %>% select(-X)
+
+data <- data %>% clean_names()
+data$y_bin <- as.factor(data$y_bin)
+```
+
+# Initializing Model
+
+```{r}
+#model
+rf_model <-  rand_forest(mode = "classification",
+                        trees = tune(),
+                        mtry = tune(),
+                        min_n = tune()) %>%
+            set_engine("randomForest")%>%
+  
+
+#grid
+rf_grid <- grid_regular(
+  mtry(range = c(8, 20)),
+  min_n(range = c(2, 8)),
+  trees(range = c(10,120)),
+  levels = 5
+)
+
+#workflow
+rf_wf <- workflow() %>% 
+  add_formula(y_bin ~.) %>% 
+  add_model(rf_model, )
+```
+
+
+```{r}
+set.seed(48298)
+
+#split training and testing
+split <- initial_split(data, prop = 0.8)
+train <- split %>% training()
+test <- split %>% testing()
+
+train_balanced <- ovun.sample(y_bin ~ ., data = train,
+                                N = nrow(train), p = 0.4, 
+                                seed = 45, method = "both")$data
+
+#stratified cross-validation
+cv <- vfold_cv(data = train_balanced, v = 5, strata = y_bin)
+
+#call model over grid search
+rf_call <- tune_grid(
+  rf_wf,
+  grid = rf_grid,
+  resamples = cv,
+  control = control_grid(save_pred = TRUE),
+  metrics = metric_set(accuracy, roc_auc, sens, spec)
+)
+```
+
+```{r}
+#model metrics
+metrics <- rf_call %>% collect_metrics()
+
+metrics <- metrics %>% select(-std_err) %>% 
+  pivot_wider(names_from = .metric, values_from = mean)
+
+#find best model based on different metrics
+best_accuracy <- metrics %>% filter(accuracy == max(accuracy)) 
+best_roc_auc <- metrics %>% filter(roc_auc == max(roc_auc)) 
+best_sens <- metrics %>% filter(sens == max(sens))  
+best_spec <- metrics %>% filter(spec == max(spec)) 
+```
+
+```{r}
+rf_call %>% show_best(metric = "sens") 
+rf_call %>% collect_predictions()
+```
+
