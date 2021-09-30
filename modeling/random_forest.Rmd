@@ -1,0 +1,159 @@
+---
+title: "Random Forest Models"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(janitor)
+library(ggplot2)
+
+over_sampled <- read.csv('../data/data_oversampling.csv') %>% select(-X)
+combined <- read.csv('../data/data_combined_sampling.csv') %>% select(-X)
+original <- read.csv('../data/data_original_sampling.csv') %>% select(-X)
+
+over_sampled <- over_sampled %>% clean_names()
+combined <- combined %>% clean_names()
+original <- original %>% clean_names()
+
+over_sampled$y_bin <- as.factor(over_sampled$y_bin)
+combined$y_bin <- as.factor(combined$y_bin)
+original$y_bin <- as.factor(original$y_bin)
+```
+
+# Initializing Model
+
+```{r}
+#model
+rf_model <-  rand_forest(mode = "classification",
+                        trees = tune(),
+                        mtry = tune(),
+                        min_n = tune()) %>%
+            set_engine("randomForest") 
+
+#grid
+rf_grid <- grid_regular(
+  mtry(range = c(8, 20)),
+  min_n(range = c(2, 8)),
+  trees(range = c(10,120)),
+  levels = 5
+)
+
+#workflow
+rf_wf <- workflow() %>% 
+  add_formula(y_bin ~.) %>% 
+  add_model(rf_model)
+```
+
+
+# Over Sampled Model
+
+```{r}
+set.seed(48298)
+
+#split training and testing
+split_over <- initial_split(over_sampled, prop = 0.8)
+train_over <- split_over %>% training()
+test_over <- split_over %>% testing()
+
+#stratified cross-validation
+cv_over <- vfold_cv(data = train_over, v = 5, strata = y_bin)
+
+#call model over grid search
+rf_call_over <- tune_grid(
+  rf_wf,
+  grid = rf_grid,
+  resamples = cv_over,
+  metrics = metric_set(accuracy, roc_auc, sens, spec)
+)
+```
+
+```{r}
+#model metrics
+metrics_over <- rf_call_over %>% collect_metrics()
+
+metrics_over <- metrics_over %>% select(-std_err) %>% 
+  pivot_wider(names_from = .metric, values_from = mean)
+
+#find best model based on different metrics
+best_accuracy_over <- metrics_over %>% filter(accuracy == max(accuracy)) 
+best_roc_auc_over <- metrics_over %>% filter(roc_auc == max(roc_auc)) 
+best_sens_over <- metrics_over %>% filter(sens == max(sens))  
+best_spec_over <- metrics_over %>% filter(spec == max(spec)) 
+```
+
+
+# Combined Sampling Model
+
+```{r}
+set.seed(48298)
+
+#split training and testing
+split_combined <- initial_split(combined, prop = 0.8)
+train_combined <- split_combined %>% training()
+test_combined <- split_combined %>% testing()
+
+#stratified cross-validation
+cv_combined <- vfold_cv(data = train_combined, v = 5, strata = y_bin)
+
+#call model over grid search
+rf_call_combined <- tune_grid(
+  rf_wf,
+  grid = rf_grid,
+  resamples = cv_combined,
+  metrics = metric_set(accuracy, roc_auc, sens, spec)
+)
+```
+
+```{r}
+#model metrics
+metrics_combined <- rf_call_combined %>% collect_metrics()
+
+metrics_combined <- metrics_combined %>% select(-std_err) %>% 
+  pivot_wider(names_from = .metric, values_from = mean)
+
+#find best model based on different metrics
+best_accuracy_combined <- metrics_combined %>% filter(accuracy == max(accuracy)) 
+best_roc_auc_combined <- metrics_combined %>% filter(roc_auc == max(roc_auc)) 
+best_sens_combined <- metrics_combined %>% filter(sens == max(sens))  
+best_spec_combined <- metrics_combined %>% filter(spec == max(spec)) 
+```
+
+
+# Original Data with class_weights Model
+
+```{r}
+set.seed(48298)
+
+#split training and testing
+split_original <- initial_split(original, prop = 0.8)
+train_original <- split_original %>% training()
+test_original <- split_original %>% testing()
+
+#stratified cross-validation
+cv_original <- vfold_cv(data = train_original, v = 5, strata = y_bin)
+
+#call model over grid search
+rf_call_original <- tune_grid(
+  rf_wf,
+  grid = rf_grid,
+  resamples = cv_original,
+  metrics = metric_set(accuracy, roc_auc, sens, spec)
+)
+```
+
+```{r}
+#model metrics
+metrics_original <- rf_call_original %>% collect_metrics()
+
+metrics_original <- metrics_original %>% select(-std_err) %>% 
+  pivot_wider(names_from = .metric, values_from = mean)
+
+#find best model based on different metrics
+best_accuracy_original <- metrics_original %>% filter(accuracy == max(accuracy)) 
+best_roc_auc_original <- metrics_original %>% filter(roc_auc == max(roc_auc)) 
+best_sens_original <- metrics_original %>% filter(sens == max(sens))  
+best_spec_original <- metrics_original %>% filter(spec == max(spec)) 
+```
+
