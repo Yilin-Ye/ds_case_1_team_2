@@ -10,21 +10,26 @@ library(janitor)
 library(ggplot2)
 library(ROSE)
 
-data <- read.csv('./data/data_original_sampling.csv') %>% select(-X)
+#data <- read.csv('./data/data_original_sampling.csv') %>% select(-X)
+data <- read.csv('../data/data_original_sampling.csv') %>% 
+  select(-X) %>% 
+  clean_names() %>% 
+  mutate(y_bin = as.factor(y_bin))
 
-data <- data %>% clean_names()
-data$y_bin <- as.factor(data$y_bin)
+#data <- data %>% clean_names()
+#data$y_bin <- as.factor(data$y_bin)
 ```
 
 # Initializing Model
 
 ```{r}
 #model
-rf_model <-  rand_forest(mode = "classification",
-                        trees = tune(),
-                        mtry = tune(),
-                        min_n = tune()) %>%
-            set_engine("randomForest")%>%
+rf_model <- rand_forest(
+  mode = "classification",
+  trees = tune(),
+  mtry = tune(),
+  min_n = tune()) %>%
+  set_engine("randomForest")
   
 
 #grid
@@ -41,19 +46,34 @@ rf_wf <- workflow() %>%
   add_model(rf_model, )
 ```
 
+# Model using ROSE for balancing
+
+Split train/test, then balance using ROSE. 
 
 ```{r}
 set.seed(48298)
 
-#split training and testing
-split <- initial_split(data, prop = 0.8)
+#split training and testing; stratify based on y_bin (roughly 90-10 split)
+split <- initial_split(data, prop = 0.8, strata = "y_bin")
 train <- split %>% training()
 test <- split %>% testing()
 
+# SAVE this specific train-test split to use on all models!!!
+#write_csv(train, file = "../data/final/train_original_sampling.csv")
+3write_csv(test, file = "../data/final/test_original_sampling.csv")
+
+# balance
 train_balanced <- ovun.sample(y_bin ~ ., data = train,
                                 N = nrow(train), p = 0.4, 
                                 seed = 45, method = "both")$data
 
+# save balanced
+#write_csv(train_balanced, file = "../data/final/train_rose_sampling.csv")
+```
+
+Call model w/tuning grid
+
+```{r}
 #stratified cross-validation
 cv <- vfold_cv(data = train_balanced, v = 5, strata = y_bin)
 
@@ -66,6 +86,8 @@ rf_call <- tune_grid(
   metrics = metric_set(accuracy, roc_auc, sens, spec)
 )
 ```
+
+Model metrics: 
 
 ```{r}
 #model metrics
@@ -81,8 +103,26 @@ best_sens <- metrics %>% filter(sens == max(sens))
 best_spec <- metrics %>% filter(spec == max(spec)) 
 ```
 
+Select best model based on accuracy... I've never seen a train roc this good in my life...
+
 ```{r}
-rf_call %>% show_best(metric = "sens") 
-rf_call %>% collect_predictions()
+rf_best <- rf_call %>% 
+  select_best(metric = "accuracy")
+
+rf_call %>% 
+  collect_predictions(parameters = rf_best) %>% 
+  roc_curve(y_bin, .pred_1) %>% 
+  mutate(model = "Random Forest") %>% 
+  ggplot(aes(x = sensitivity, y = 1-specificity, col = model)) + 
+  geom_path(lwd = 1.5, alpha = 0.8) +
+  geom_abline(lty = 3) + 
+  coord_equal() + 
+  scale_color_viridis_d(option = "plasma", end = .6)
 ```
+
+
+
+# Model using SMOTE for balancing
+
+
 
