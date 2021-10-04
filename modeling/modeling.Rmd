@@ -35,9 +35,9 @@ rf_model <- rand_forest(
 
 #grid
 rf_grid <- grid_regular(
-  mtry(range = c(8, 20)),
-  min_n(range = c(2, 8)),
-  trees(range = c(10,120)),
+  mtry(range = c(2, 15)),
+  min_n(range = c(2, 15)),
+  trees(range = c(10,200)),
   levels = 5
 )
 
@@ -55,21 +55,21 @@ Split train/test, then balance using ROSE. Note: these have been run and the res
 set.seed(48298)
 
 #split training and testing; stratify based on y_bin (roughly 90-10 split)
-split <- initial_split(data, prop = 0.7, strata = "y_bin")
-train <- split %>% training()
-test <- split %>% testing()
+#split <- initial_split(data, prop = 0.7, strata = "y_bin")
+#train <- split %>% training()
+#test <- split %>% testing()
 
 # SAVE this specific train-test split to use on all models!!!
-write_csv(train, file = "../data/final/train_original_sampling.csv")
-write_csv(test, file = "../data/final/test_original_sampling.csv")
+#write_csv(train, file = "../data/final/train_original_sampling.csv")
+#write_csv(test, file = "../data/final/test_original_sampling.csv")
 
 # balance
-train_rose <- ovun.sample(y_bin ~ ., data = train,
-                                N = nrow(train), p = 0.4, 
-                                seed = 45, method = "both")$data
+#train_rose <- ovun.sample(y_bin ~ ., data = train,
+#                                N = nrow(train), p = 0.4, 
+#                                seed = 45, method = "both")$data
 
 # save balanced
-write_csv(train_balanced, file = "../data/final/train_rose_sampling.csv")
+#write_csv(train_balanced, file = "../data/final/train_rose_sampling.csv")
 
 # read in oversampled train using ROSE and the test set created above
 train_rose <- read_csv("../data/final/train_rose_sampling.csv") %>% 
@@ -132,7 +132,6 @@ rose_rf_auc %>%
   scale_color_viridis_d(option = "plasma", end = .6)
 ```
 
-We're overfitting like crazy 
 
 ```{r}
 rose_rf_wf <- rf_wf %>%
@@ -150,13 +149,13 @@ rose_rf_preds %>% group_by(actual, pred) %>% summarize(n=n())
 
 # Model using SMOTE for balancing
 
-Split train/test, then balance using ROSE. 
+Read in smote
 
 ```{r}
 # read in SMOTE combined sampling (& original sampling)
 train_smote <- read_csv("../data/final/train_combined_sampling.csv") %>%
-  mutate(y_bin = as.factor(y_bin)) %>% select(-X1)
-test <- read_csv("../data/final/test_original_sampling.csv") %>% mutate(y_bin = as.factor(y_bin))
+  mutate(y_bin = as.factor(y_bin)) %>% select(-y_bin, everything(), y_bin, -X1)
+test <- read_csv("../data/final/test_original_sampling.csv") %>% mutate(y_bin = as.factor(y_bin)) 
 ```
 
 Call model w/tuning grid
