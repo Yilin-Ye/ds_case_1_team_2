@@ -32,6 +32,13 @@ rf_model <- rand_forest(
   min_n = tune()) %>%
   set_engine("randomForest")
   
+knn_model <- nearest_neighbor(
+  mode = "classification",
+  engine = "kknn",
+  neighbors = tune(),
+  weight_func = NULL,
+  dist_power = NULL
+)
 
 #grid
 rf_grid <- grid_regular(
@@ -41,10 +48,19 @@ rf_grid <- grid_regular(
   levels = 5
 )
 
+knn_grid <- tibble(
+  neighbors = c(10, 20, 30, 50, 75, 100, 125, 150)
+)
+
+
 #workflow
 rf_wf <- workflow() %>% 
   add_formula(y_bin ~.) %>% 
   add_model(rf_model, )
+
+knn_wf <- workflow() %>% 
+    add_formula(y_bin ~.) %>% 
+    add_model(knn_model)
 ```
 
 # Model using ROSE for balancing
@@ -75,6 +91,7 @@ set.seed(48298)
 train_rose <- read_csv("../data/final/train_rose_sampling.csv") %>% 
   clean_names() %>% 
   mutate(y_bin = as.factor(y_bin))
+
 test <- read_csv("../data/final/test_original_sampling.csv") %>% 
   clean_names() %>% 
   mutate(y_bin = as.factor(y_bin))
@@ -94,28 +111,53 @@ rose_rf_call <- tune_grid(
   control = control_grid(save_pred = TRUE),
   metrics = metric_set(accuracy, roc_auc, sens, spec)
 )
+
+rose_knn_call <- tune_grid(
+  knn_wf,
+  grid = knn_grid,
+  resamples = rose_cv,
+  control = control_grid(save_pred = TRUE),
+  metrics = metric_set(accuracy, roc_auc, sens, spec)
+)
 ```
 
 Model metrics: 
 
 ```{r}
 #model metrics
-rose_metrics <- rose_rf_call %>% collect_metrics()
+rose_rf_metrics <- rose_rf_call %>% collect_metrics()
 
-rose_metrics <- rose_metrics %>% select(-std_err) %>% 
+rose_knn_metrics <- rose_knn_call %>% collect_metrics()
+
+rose_rf_metrics <- rose_rf_metrics %>% select(-std_err) %>% 
+  pivot_wider(names_from = .metric, values_from = mean)
+
+rose_knn_metrics <- rose_knn_metrics %>% select(-std_err) %>% 
   pivot_wider(names_from = .metric, values_from = mean)
 
 #find best model based on different metrics
-rose_best_accuracy <- rose_metrics %>% filter(accuracy == max(accuracy)) 
-rose_best_roc_auc <- rose_metrics %>% filter(roc_auc == max(roc_auc)) 
-rose_best_sens <- rose_metrics %>% filter(sens == max(sens))  
-rose_best_spec <- rose_metrics %>% filter(spec == max(spec)) 
+rose_rf_best_accuracy <- rose_rf_metrics %>% filter(accuracy == max(accuracy)) 
+rose_rf_best_roc_auc <- rose_rf_metrics %>% filter(roc_auc == max(roc_auc)) 
+rose_rf_best_sens <- rose_rf_metrics %>% filter(sens == max(sens))  
+rose_rf_best_spec <- rose_rf_metrics %>% filter(spec == max(spec)) 
+
+rose_knn_best_accuracy <- rose_rf_metrics %>% filter(accuracy == max(accuracy)) 
+rose_knn_best_roc_auc <- rose_rf_metrics %>% filter(roc_auc == max(roc_auc)) 
+rose_knn_best_sens <- rose_rf_metrics %>% filter(sens == max(sens))  
+rose_knn_best_spec <- rose_rf_metrics %>% filter(spec == max(spec)) 
+
 ```
+
+
+
 
 Select best model based on accuracy... I've never seen a train roc this good in my life... Overfitting???
 
 ```{r}
 rose_rf_best <- rose_rf_call %>% 
+  select_best(metric = "sens")
+
+rose_knn_best <- rose_knn_call %>% 
   select_best(metric = "sens")
 
 rose_rf_auc <- 
@@ -124,7 +166,22 @@ rose_rf_auc <-
   roc_curve(y_bin, .pred_1) %>% 
   mutate(model = "RF ROSE")
 
+rose_knn_auc <- 
+  rose_knn_call %>% 
+  collect_predictions(parameters = rose_knn_best) %>% 
+  roc_curve(y_bin, .pred_1) %>% 
+  mutate(model = "KNN ROSE")
+
+
+
 rose_rf_auc %>% 
+  ggplot(aes(x = sensitivity, y = 1-specificity, col = model)) + 
+  geom_path(lwd = 1.5, alpha = 0.8) +
+  geom_abline(lty = 3) + 
+  coord_equal() + 
+  scale_color_viridis_d(option = "plasma", end = .6)
+
+rose_knn_auc %>% 
   ggplot(aes(x = sensitivity, y = 1-specificity, col = model)) + 
   geom_path(lwd = 1.5, alpha = 0.8) +
   geom_abline(lty = 3) + 
@@ -144,6 +201,17 @@ rose_rf_preds <- predict(rose_rf_fit, test, type = "prob") %>%
   mutate(pred = ifelse(.pred_1 >= 0.4, 1, 0))
 
 rose_rf_preds %>% group_by(actual, pred) %>% summarize(n=n())
+
+rose_knn_wf <- knn_wf %>%
+  finalize_workflow(rose_knn_best)
+
+rose_knn_fit <- fit(rose_knn_wf, train_rose)
+
+rose_knn_preds <- predict(rose_knn_fit, test, type = "prob") %>%
+  cbind(actual = test$y_bin) %>% 
+  mutate(pred = ifelse(.pred_1 >= 0.4, 1, 0))
+
+rose_knn_preds %>% group_by(actual, pred) %>% summarize(n=n())
 ```
 
 
@@ -154,10 +222,10 @@ Read in smote
 ```{r}
 # read in SMOTE combined sampling (& original sampling)
 train_smote <- read_csv("../data/final/train_combined_sampling.csv") %>%
-  mutate(y_bin = as.factor(y_bin)) %>% select(-y_bin, everything(), y_bin, -X1)
+  mutate(y_bin = as.factor(y_bin)) %>% select(-y_bin, everything(), y_bin, -...1)
+
 test <- read_csv("../data/final/test_original_sampling.csv") %>% mutate(y_bin = as.factor(y_bin)) 
 ```
-
 Call model w/tuning grid
 
 ```{r}
@@ -172,22 +240,43 @@ smote_rf_call <- tune_grid(
   control = control_grid(save_pred = TRUE),
   metrics = metric_set(accuracy, roc_auc, sens, spec)
 )
+
+#call model over grid search
+smote_knn_call <- tune_grid(
+  knn_wf,
+  grid = knn_grid,
+  resamples = smote_cv,
+  control = control_grid(save_pred = TRUE),
+  metrics = metric_set(accuracy, roc_auc, sens, spec)
+)
 ```
 
 Model metrics: 
 
 ```{r}
 #model metrics
-smote_metrics <- smote_rf_call %>% collect_metrics()
+smote_rf_metrics <- smote_rf_call %>% collect_metrics()
 
-smote_metrics <- smote_metrics %>% select(-std_err) %>% 
+smote_rf_metrics <- smote_rf_metrics %>% select(-std_err) %>% 
   pivot_wider(names_from = .metric, values_from = mean)
 
 #find best model based on different metrics
-smote_best_accuracy <- smote_metrics %>% filter(accuracy == max(accuracy)) 
-smote_best_roc_auc <- smote_metrics %>% filter(roc_auc == max(roc_auc)) 
-smote_best_sens <- smote_metrics %>% filter(sens == max(sens))  
-smote_best_spec <- smote_metrics %>% filter(spec == max(spec)) 
+smote_rf_best_accuracy <- smote_rf_metrics %>% filter(accuracy == max(accuracy)) 
+smote_rf_best_roc_auc <- smote_rf_metrics %>% filter(roc_auc == max(roc_auc)) 
+smote_rf_best_sens <- smote_rf_metrics %>% filter(sens == max(sens))  
+smote_rf_best_spec <- smote_rf_metrics %>% filter(spec == max(spec)) 
+
+#model metrics
+smote_knn_metrics <- smote_knn_call %>% collect_metrics()
+
+smote_knn_metrics <- smote_knn_metrics %>% select(-std_err) %>% 
+  pivot_wider(names_from = .metric, values_from = mean)
+
+#find best model based on different metrics
+smote_knn_best_accuracy <- smote_knn_metrics %>% filter(accuracy == max(accuracy)) 
+smote_knn_best_roc_auc <- smote_knn_metrics %>% filter(roc_auc == max(roc_auc)) 
+smote_knn_best_sens <- smote_knn_metrics %>% filter(sens == max(sens))  
+smote_kn_best_spec <- smote_knn_metrics %>% filter(spec == max(spec)) 
 ```
 
 Select best model based on sens; overfitting?
@@ -196,13 +285,29 @@ Select best model based on sens; overfitting?
 smote_rf_best <- smote_rf_call %>% 
   select_best(metric = "sens")
 
+smote_knn_best <- smote_knn_call %>% 
+  select_best(metric = "sens")
+
 smote_rf_auc <- 
   smote_rf_call %>% 
   collect_predictions(parameters = smote_rf_best) %>% 
   roc_curve(y_bin, .pred_1) %>% 
   mutate(model = "RF SMOTE")
 
+smote_knn_auc <- 
+  smote_knn_call %>% 
+  collect_predictions(parameters = smote_knn_best) %>% 
+  roc_curve(y_bin, .pred_1) %>% 
+  mutate(model = "KNN SMOTE")
+
 smote_rf_auc %>% 
+  ggplot(aes(x = sensitivity, y = 1-specificity, col = model)) + 
+  geom_path(lwd = 1.5, alpha = 0.8) +
+  geom_abline(lty = 3) + 
+  coord_equal() + 
+  scale_color_viridis_d(option = "plasma", end = .6)
+
+smote_knn_auc %>% 
   ggplot(aes(x = sensitivity, y = 1-specificity, col = model)) + 
   geom_path(lwd = 1.5, alpha = 0.8) +
   geom_abline(lty = 3) + 
@@ -212,16 +317,25 @@ smote_rf_auc %>%
 This is much better than ROSE
 
 ```{r}
-smote_rf_wf <- rf_wf %>%
-  finalize_workflow(smote_rf_best)
+smote_rf_wf <- rf_wf %>% finalize_workflow(smote_rf_best)
+smote_knn_wf <- knn_wf %>% finalize_workflow(smote_knn_best)
+
 
 smote_rf_fit <- fit(smote_rf_wf, train_smote)
+smote_knn_fit <- fit(smote_knn_wf, train_smote)
+
 
 smote_rf_preds <- predict(smote_rf_fit, test, type = "prob") %>%
   cbind(actual = test$y_bin) %>% 
   mutate(pred = ifelse(.pred_1 >= 0.4, 1, 0))
 
+smote_knn_preds <- predict(smote_knn_fit, test, type = "prob") %>%
+  cbind(actual = test$y_bin) %>% 
+  mutate(pred = ifelse(.pred_1 >= 0.4, 1, 0))
+
+
 smote_rf_preds %>% group_by(actual, pred) %>% summarize(n=n())
+smote_knn_preds %>% group_by(actual, pred) %>% summarize(n=n())
 ```
 
 
