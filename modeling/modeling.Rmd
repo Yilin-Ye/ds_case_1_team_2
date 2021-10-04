@@ -3,21 +3,22 @@ title: "R Notebook"
 output: html_notebook
 ---
 
-```{r}
+```{r warning=FALSE}
 library(tidyverse)
 library(tidymodels)
 library(janitor)
 library(ggplot2)
 library(ROSE)
 
-#data <- read.csv('./data/data_original_sampling.csv') %>% select(-X)
-data <- read.csv('../data/data_original_sampling.csv') %>% 
+#data <- read.csv('./data/final/data_original_sampling.csv') %>% select(-X)
+#data <- data %>% clean_names()
+#data$y_bin <- as.factor(data$y_bin)
+
+# original sampling
+data <- read.csv('../data/final/data_original_sampling.csv') %>% 
   select(-X) %>% 
   clean_names() %>% 
   mutate(y_bin = as.factor(y_bin))
-
-#data <- data %>% clean_names()
-#data$y_bin <- as.factor(data$y_bin)
 ```
 
 # Initializing Model
@@ -48,40 +49,48 @@ rf_wf <- workflow() %>%
 
 # Model using ROSE for balancing
 
-Split train/test, then balance using ROSE. 
+Split train/test, then balance using ROSE. Note: these have been run and the resulting train/test split has been saved. DO NOT RUN AGAIN so that we can continue to use the same train/test split on all other models, sampling techniques, etc. 
 
 ```{r}
 set.seed(48298)
 
 #split training and testing; stratify based on y_bin (roughly 90-10 split)
-split <- initial_split(data, prop = 0.8, strata = "y_bin")
+split <- initial_split(data, prop = 0.7, strata = "y_bin")
 train <- split %>% training()
 test <- split %>% testing()
 
 # SAVE this specific train-test split to use on all models!!!
-#write_csv(train, file = "../data/final/train_original_sampling.csv")
-3write_csv(test, file = "../data/final/test_original_sampling.csv")
+write_csv(train, file = "../data/final/train_original_sampling.csv")
+write_csv(test, file = "../data/final/test_original_sampling.csv")
 
 # balance
-train_balanced <- ovun.sample(y_bin ~ ., data = train,
+train_rose <- ovun.sample(y_bin ~ ., data = train,
                                 N = nrow(train), p = 0.4, 
                                 seed = 45, method = "both")$data
 
 # save balanced
-#write_csv(train_balanced, file = "../data/final/train_rose_sampling.csv")
+write_csv(train_balanced, file = "../data/final/train_rose_sampling.csv")
+
+# read in oversampled train using ROSE and the test set created above
+train_rose <- read_csv("../data/final/train_rose_sampling.csv") %>% 
+  clean_names() %>% 
+  mutate(y_bin = as.factor(y_bin))
+test <- read_csv("../data/final/test_original_sampling.csv") %>% 
+  clean_names() %>% 
+  mutate(y_bin = as.factor(y_bin))
 ```
 
 Call model w/tuning grid
 
 ```{r}
 #stratified cross-validation
-cv <- vfold_cv(data = train_balanced, v = 5, strata = y_bin)
+rose_cv <- vfold_cv(data = train_rose, v = 5, strata = y_bin)
 
 #call model over grid search
-rf_call <- tune_grid(
+rose_rf_call <- tune_grid(
   rf_wf,
   grid = rf_grid,
-  resamples = cv,
+  resamples = rose_cv,
   control = control_grid(save_pred = TRUE),
   metrics = metric_set(accuracy, roc_auc, sens, spec)
 )
@@ -91,28 +100,31 @@ Model metrics:
 
 ```{r}
 #model metrics
-metrics <- rf_call %>% collect_metrics()
+rose_metrics <- rose_rf_call %>% collect_metrics()
 
-metrics <- metrics %>% select(-std_err) %>% 
+rose_metrics <- rose_metrics %>% select(-std_err) %>% 
   pivot_wider(names_from = .metric, values_from = mean)
 
 #find best model based on different metrics
-best_accuracy <- metrics %>% filter(accuracy == max(accuracy)) 
-best_roc_auc <- metrics %>% filter(roc_auc == max(roc_auc)) 
-best_sens <- metrics %>% filter(sens == max(sens))  
-best_spec <- metrics %>% filter(spec == max(spec)) 
+rose_best_accuracy <- rose_metrics %>% filter(accuracy == max(accuracy)) 
+rose_best_roc_auc <- rose_metrics %>% filter(roc_auc == max(roc_auc)) 
+rose_best_sens <- rose_metrics %>% filter(sens == max(sens))  
+rose_best_spec <- rose_metrics %>% filter(spec == max(spec)) 
 ```
 
-Select best model based on accuracy... I've never seen a train roc this good in my life...
+Select best model based on accuracy... I've never seen a train roc this good in my life... Overfitting???
 
 ```{r}
-rf_best <- rf_call %>% 
-  select_best(metric = "accuracy")
+rose_rf_best <- rose_rf_call %>% 
+  select_best(metric = "sens")
 
-rf_call %>% 
-  collect_predictions(parameters = rf_best) %>% 
+rose_rf_auc <- 
+  rose_rf_call %>% 
+  collect_predictions(parameters = rose_rf_best) %>% 
   roc_curve(y_bin, .pred_1) %>% 
-  mutate(model = "Random Forest") %>% 
+  mutate(model = "RF ROSE")
+
+rose_rf_auc %>% 
   ggplot(aes(x = sensitivity, y = 1-specificity, col = model)) + 
   geom_path(lwd = 1.5, alpha = 0.8) +
   geom_abline(lty = 3) + 
@@ -120,9 +132,97 @@ rf_call %>%
   scale_color_viridis_d(option = "plasma", end = .6)
 ```
 
+We're overfitting like crazy 
+
+```{r}
+rose_rf_wf <- rf_wf %>%
+  finalize_workflow(rose_rf_best)
+
+rose_rf_fit <- fit(rose_rf_wf, train_rose)
+
+rose_rf_preds <- predict(rose_rf_fit, test, type = "prob") %>%
+  cbind(actual = test$y_bin) %>% 
+  mutate(pred = ifelse(.pred_1 >= 0.4, 1, 0))
+
+rose_rf_preds %>% group_by(actual, pred) %>% summarize(n=n())
+```
 
 
 # Model using SMOTE for balancing
 
+Split train/test, then balance using ROSE. 
+
+```{r}
+# read in SMOTE combined sampling (& original sampling)
+train_smote <- read_csv("../data/final/train_combined_sampling.csv") %>%
+  mutate(y_bin = as.factor(y_bin)) %>% select(-X1)
+test <- read_csv("../data/final/test_original_sampling.csv") %>% mutate(y_bin = as.factor(y_bin))
+```
+
+Call model w/tuning grid
+
+```{r}
+#stratified cross-validation
+smote_cv <- vfold_cv(data = train_smote, v = 5, strata = y_bin)
+
+#call model over grid search
+smote_rf_call <- tune_grid(
+  rf_wf,
+  grid = rf_grid,
+  resamples = smote_cv,
+  control = control_grid(save_pred = TRUE),
+  metrics = metric_set(accuracy, roc_auc, sens, spec)
+)
+```
+
+Model metrics: 
+
+```{r}
+#model metrics
+smote_metrics <- smote_rf_call %>% collect_metrics()
+
+smote_metrics <- smote_metrics %>% select(-std_err) %>% 
+  pivot_wider(names_from = .metric, values_from = mean)
+
+#find best model based on different metrics
+smote_best_accuracy <- smote_metrics %>% filter(accuracy == max(accuracy)) 
+smote_best_roc_auc <- smote_metrics %>% filter(roc_auc == max(roc_auc)) 
+smote_best_sens <- smote_metrics %>% filter(sens == max(sens))  
+smote_best_spec <- smote_metrics %>% filter(spec == max(spec)) 
+```
+
+Select best model based on sens; overfitting?
+
+```{r}
+smote_rf_best <- smote_rf_call %>% 
+  select_best(metric = "sens")
+
+smote_rf_auc <- 
+  smote_rf_call %>% 
+  collect_predictions(parameters = smote_rf_best) %>% 
+  roc_curve(y_bin, .pred_1) %>% 
+  mutate(model = "RF SMOTE")
+
+smote_rf_auc %>% 
+  ggplot(aes(x = sensitivity, y = 1-specificity, col = model)) + 
+  geom_path(lwd = 1.5, alpha = 0.8) +
+  geom_abline(lty = 3) + 
+  coord_equal() + 
+  scale_color_viridis_d(option = "plasma", end = .6)
+```
+This is much better than ROSE
+
+```{r}
+smote_rf_wf <- rf_wf %>%
+  finalize_workflow(smote_rf_best)
+
+smote_rf_fit <- fit(smote_rf_wf, train_smote)
+
+smote_rf_preds <- predict(smote_rf_fit, test, type = "prob") %>%
+  cbind(actual = test$y_bin) %>% 
+  mutate(pred = ifelse(.pred_1 >= 0.4, 1, 0))
+
+smote_rf_preds %>% group_by(actual, pred) %>% summarize(n=n())
+```
 
 
