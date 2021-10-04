@@ -1,0 +1,72 @@
+---
+title: "final_presentation_EDA"
+author: "Connor Mignone"
+date: "9/28/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(readr)
+```
+
+```{r}
+data_oversampling <- read_csv("data_oversampling.csv")
+View(data_oversampling)
+# final data with no balance correction
+data_original_sampling <- read_csv("data_original_sampling.csv")
+View(data_original_sampling)
+```
+
+Showing the difference in data using oversampling techniques
+```{r}
+ggplot_ovs <- data_oversampling
+ggplot_ovs$y_bin <- case_when(ggplot_ovs$y_bin == 1 ~ "Admit Patient", ggplot_ovs$y_bin == 0 ~ "Discharge Patient")
+
+ggplot_os <- data_original_sampling
+ggplot_os$y_bin <- case_when(ggplot_os$y_bin == 1 ~ "Admit Patient", ggplot_os$y_bin == 0 ~ "Discharge Patient")
+ggplot(data = ggplot_os)+
+  geom_bar(aes(as.factor(y_bin)))+
+  labs(title = "Original Sampling Data", x = "Doctor Decision")+
+  theme_classic()
+
+ggplot(data = ggplot_ovs)+
+  geom_bar(aes(as.factor(y_bin)))+
+  labs(title = "Oversampled Data", x = "Doctor Decision")+
+  theme_classic()
+```
+
+
+Age Quantile Admitted VS Discharged 
+```{r}
+ggplot(data = ggplot_os)+
+    geom_histogram(aes(`Patient age quantile`), bins = 15)+
+  facet_wrap(vars(y_bin))+
+  labs(x = "Patient Age Quantile", y = "Number of Patients")+
+  theme_bw()
+```
+
+```{r}
+ggplot(data = ggplot_os)+
+    geom_histogram(aes(`Platelets`), bins = 10)+
+  facet_wrap(vars(y_bin))+
+  labs(title = "Admitted vs. Discharged Patient Platelet Distribution", x = "Normalized Platelet Test Result", y = "Number of Patients")
+```
+
+```{r}
+ggplot(data = ggplot_os)+
+    geom_histogram(aes(`Hb saturation (venous blood gas analysis)`), bins = 10)+
+  facet_wrap(vars(y_bin))+
+  labs(title = "Admitted vs. Discharged Patient Lymphocyte Distribution", x = "Normalized Platelet Test Result", y = "Number of Patients")
+```
+
+```{r}
+ggplot(data = ggplot_os)+
+    geom_bar(aes(as.factor(num_virus_or_bacteria_dectected)))+
+  facet_wrap(vars(y_bin))+
+  labs(title = "Admitted vs. Discharged Patient Platelet Distribution", x = "Number of Other Viruses or Bacteria Dectected", y = "Number of Patients")
+```
+
