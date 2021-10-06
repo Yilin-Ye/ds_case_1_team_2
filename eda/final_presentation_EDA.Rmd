@@ -14,10 +14,10 @@ library(readr)
 ```
 
 ```{r}
-data_oversampling <- read_csv("data_oversampling.csv")
+data_oversampling <- read_csv("../data/data_oversampling.csv")
 View(data_oversampling)
 # final data with no balance correction
-data_original_sampling <- read_csv("data_original_sampling.csv")
+data_original_sampling <- read_csv("../data/final/data_original_sampling.csv")
 View(data_original_sampling)
 ```
 
@@ -67,6 +67,6 @@ ggplot(data = ggplot_os)+
 ggplot(data = ggplot_os)+
     geom_bar(aes(as.factor(num_virus_or_bacteria_dectected)))+
   facet_wrap(vars(y_bin))+
-  labs(title = "Admitted vs. Discharged Patient Platelet Distribution", x = "Number of Other Viruses or Bacteria Dectected", y = "Number of Patients")
+  labs(title = "Admitted vs. Discharged Patient Virus Test Distribution", x = "Number of Other Viruses or Bacteria Dectected", y = "Number of Patients")
 ```
 
