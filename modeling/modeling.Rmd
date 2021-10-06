@@ -139,11 +139,19 @@ rose_rf_wf <- rf_wf %>%
 
 rose_rf_fit <- fit(rose_rf_wf, train_rose)
 
-rose_rf_preds <- predict(rose_rf_fit, test, type = "prob") %>%
-  cbind(actual = test$y_bin) %>% 
-  mutate(pred = ifelse(.pred_1 >= 0.4, 1, 0))
+rose_rf_testing_pred <- 
+  predict(rose_rf_fit, test) %>% 
+  bind_cols(predict(rose_rf_fit, test, type = "prob")) %>% 
+  mutate(.pred_class = as.factor(ifelse(.pred_1 >= 0.4, 1, 0))) %>% 
+  bind_cols(test %>% select(y_bin))
 
-rose_rf_preds %>% group_by(actual, pred) %>% summarize(n=n())
+# confusion matrix
+rose_rf_testing_pred %>%  
+  conf_mat(truth = y_bin, .pred_class)
+
+# sensitivity 
+rose_rf_testing_pred %>%  
+  sens(truth = y_bin, .pred_class)
 ```
 
 
@@ -209,7 +217,8 @@ smote_rf_auc %>%
   coord_equal() + 
   scale_color_viridis_d(option = "plasma", end = .6)
 ```
-This is much better than ROSE
+
+Preds 
 
 ```{r}
 smote_rf_wf <- rf_wf %>%
@@ -217,11 +226,19 @@ smote_rf_wf <- rf_wf %>%
 
 smote_rf_fit <- fit(smote_rf_wf, train_smote)
 
-smote_rf_preds <- predict(smote_rf_fit, test, type = "prob") %>%
-  cbind(actual = test$y_bin) %>% 
-  mutate(pred = ifelse(.pred_1 >= 0.4, 1, 0))
+smote_rf_testing_pred <- 
+  predict(smote_rf_fit, test) %>% 
+  bind_cols(predict(smote_rf_fit, test, type = "prob")) %>% 
+  mutate(.pred_class = as.factor(ifelse(.pred_1 >= 0.4, 1, 0))) %>% 
+  bind_cols(test %>% select(y_bin))
 
-smote_rf_preds %>% group_by(actual, pred) %>% summarize(n=n())
+# confusion matrix
+smote_rf_testing_pred %>%  
+  conf_mat(truth = y_bin, .pred_class)
+
+# sensitivity 
+smote_rf_testing_pred %>%  
+  sens(truth = y_bin, .pred_class)
 ```
 
 
