@@ -1,7 +1,7 @@
 # ds_case_1_team_2
 
 ## Project Description
-This dataset had two main tasks from the Hospital Israelita Albert Einstein: 1) Predict who will test positive 2) Predict who will go into the ICU
+This [dataset](https://www.kaggle.com/einsteindata4u/covid19) had two main tasks from the Hospital Israelita Albert Einstein: 1) Predict who will test positive 2) Predict who will go into the ICU
 Our team choose to focus on the second task. 
 
 ## Repo Description 
