@@ -7,7 +7,7 @@ Our team choose to focus on the second task.
 ## Repo Description 
 
 ### [Data](https://github.com/Yilin-Ye/ds_case_1_team_2/tree/main/data)
-This folder contains all the various data both rough and final including but not limited to [groupings](https://github.com/Yilin-Ye/ds_case_1_team_2/tree/main/data/feature_groups) and the final [ROSE/Smote] (https://github.com/Yilin-Ye/ds_case_1_team_2/tree/main/data/final) Data.
+This folder contains all the various data both rough and final including but not limited to [groupings](https://github.com/Yilin-Ye/ds_case_1_team_2/tree/main/data/feature_groups) and the final [ROSE/Smote](https://github.com/Yilin-Ye/ds_case_1_team_2/tree/main/data/final) Data.
 
 ### [Data Cleaning Eng](https://github.com/Yilin-Ye/ds_case_1_team_2/tree/main/data_cleaning_eng)
 This folder contains the code that we ran as a combined effort of all our individual cleaning tasks. This code creates the original cleaned data set before any resampling methods are applied. 
