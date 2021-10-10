@@ -70,3 +70,154 @@ ggplot(data = ggplot_os)+
   labs(title = "Admitted vs. Discharged Patient Virus Test Distribution", x = "Number of Other Viruses or Bacteria Dectected", y = "Number of Patients")
 ```
 
+
+```{r}
+ggplot(data = ggplot_os)+
+    geom_histogram(aes(Eosinophils), bins = 15)+
+  facet_wrap(vars(y_bin))+
+  labs(title = "Admit vs. Discharge Patient Eosinophils Distribution", x = "Eosinophils", y = "Number of Patients")+ 
+  theme(plot.background = element_rect(fill = "#f9f9f9"),
+        
+         panel.background = element_rect(fill = "#ceeaf5",
+                                        colour = "#0e4776",
+                                        size = 2,
+                                        linetype = "solid"),
+        
+        title = element_text(color = "#0e4776", size = 15),
+   
+        panel.grid.major = element_line(size = 0.5,
+                                        linetype = 'solid',
+                                        colour = "white"), 
+        strip.text.x = element_text(size = 12, color = "#F5AD9A", face = "bold"),
+        
+        strip.background.x = element_rect(fill = "#0e4776"),
+  
+        panel.grid.minor = element_line(size = 0.25, 
+                                        linetype = 'solid',
+                                        colour = "white"))
+#0e4776
+```
+
+
+
+```{r}
+ggplot(data = ggplot_os)+
+    geom_bar(aes(as.factor(blood_test_grp)))+
+  facet_wrap(vars(y_bin))+
+  labs(title = "Admit vs. Discharge Patient Blood Test", x = "Blood Test Taken", y = "Number of Patients")+ 
+  theme(plot.background = element_rect(fill = "#f9f9f9"),
+        
+         panel.background = element_rect(fill = "#ceeaf5",
+                                        colour = "#0e4776",
+                                        size = 2,
+                                        linetype = "solid"),
+        
+        title = element_text(color = "#0e4776", size = 15),
+   
+        panel.grid.major = element_line(size = 0.5,
+                                        linetype = 'solid',
+                                        colour = "white"), 
+        strip.text.x = element_text(size = 12, color = "#F5AD9A", face = "bold"),
+        
+        strip.background.x = element_rect(fill = "#0e4776"),
+  
+        panel.grid.minor = element_line(size = 0.25, 
+                                        linetype = 'solid',
+                                        colour = "white")
+        )
+#0e4776
+```
+
+
+```{r}
+ggplot(data = ggplot_os)+
+    geom_jitter(aes(x=Sodium, y = Potassium, color = y_bin),)+
+  labs(title = "Sodium vs. Potassium Levels", x = "Sodium", y = "Potassium", color = "Admit vs. Discharge")+ 
+  theme(plot.background = element_rect(fill = "#f9f9f9"),
+        
+         panel.background = element_rect(fill = "#ceeaf5",
+                                        colour = "#0e4776",
+                                        size = 2,
+                                        linetype = "solid"),
+        
+        title = element_text(color = "#0e4776", size = 15),
+   
+        panel.grid.major = element_line(size = 0.5,
+                                        linetype = 'solid',
+                                        colour = "white"), 
+        strip.text.x = element_text(size = 12, color = "#F5AD9A", face = "bold"),
+        
+        strip.background.x = element_rect(fill = "#0e4776"),
+  
+        panel.grid.minor = element_line(size = 0.25, 
+                                        linetype = 'solid',
+                                        colour = "white"),
+        legend.text = element_text(size = 9),
+        legend.title = element_text(size= 10))
+#0e4776
+```
+
+
+
+```{r}
+ggplot(data = ggplot_os)+
+    geom_boxplot(aes(x=y_bin, y= Sodium))+
+  geom_jitter(aes(x = y_bin, y = Sodium, color = as.logical(pot_sod_grp)), size = 2.5, alpha = .3)+
+  labs(title = "Sodium Levels", x = "Doctor Deicison", y = "Sodium", color = "Salt Test Taken")+ 
+  theme(plot.background = element_rect(fill = "#f9f9f9"),
+        
+         panel.background = element_rect(fill = "#ceeaf5",
+                                        colour = "#0e4776",
+                                        size = 2,
+                                        linetype = "solid"),
+        
+        title = element_text(color = "#0e4776", size = 15),
+   
+        panel.grid.major = element_line(size = 0.5,
+                                        linetype = 'solid',
+                                        colour = "white"), 
+        strip.text.x = element_text(size = 12, color = "#F5AD9A", face = "bold"),
+        
+        strip.background.x = element_rect(fill = "#0e4776"),
+  
+        panel.grid.minor = element_line(size = 0.25, 
+                                        linetype = 'solid',
+                                        colour = "white"),
+        legend.text = element_text(size = 9),
+        legend.title = element_text(size= 10))
+#0e4776
+
+```
+
+
+
+```{r}
+ggplot(data = ggplot_os)+
+    geom_boxplot(aes(x=y_bin, y= Potassium,))+
+  geom_jitter(aes(x = y_bin, y = Potassium, color = as.logical(pot_sod_grp)), size = 2.5, alpha = .3)+
+  labs(title = "Potassium Levels", x = "Doctor Deicison", y = "Potassium", color = "Salt Test Taken")+ 
+  theme(plot.background = element_rect(fill = "#f9f9f9"),
+        
+         panel.background = element_rect(fill = "#ceeaf5",
+                                        colour = "#0e4776",
+                                        size = 2,
+                                        linetype = "solid"),
+        
+        title = element_text(color = "#0e4776", size = 15),
+   
+        panel.grid.major = element_line(size = 0.5,
+                                        linetype = 'solid',
+                                        colour = "white"), 
+        strip.text.x = element_text(size = 12, color = "#F5AD9A", face = "bold"),
+        
+        strip.background.x = element_rect(fill = "#0e4776"),
+  
+        panel.grid.minor = element_line(size = 0.25, 
+                                        linetype = 'solid',
+                                        colour = "white"),
+        legend.text = element_text(size = 9),
+        legend.title = element_text(size= 10))
+#0e4776
+
+```
+
