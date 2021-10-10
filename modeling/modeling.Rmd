@@ -9,6 +9,7 @@ library(tidymodels)
 library(janitor)
 library(ggplot2)
 library(ROSE)
+library(vip)
 
 #data <- read.csv('./data/final/data_original_sampling.csv') %>% select(-X)
 #data <- data %>% clean_names()
@@ -21,9 +22,11 @@ data <- read.csv('../data/final/data_original_sampling.csv') %>%
   mutate(y_bin = as.factor(y_bin))
 ```
 
-# Initializing Model
+# Initializing Models
 
 ```{r}
+set.seed(48298)
+
 #model
 rf_model <- rand_forest(
   mode = "classification",
@@ -49,7 +52,7 @@ rf_grid <- grid_regular(
 )
 
 knn_grid <- tibble(
-  neighbors = c(10, 20, 30, 50, 75, 100, 125, 150)
+  neighbors = c(seq(2, 10), seq(20, 80, 5))
 )
 
 
@@ -63,13 +66,11 @@ knn_wf <- workflow() %>%
     add_model(knn_model)
 ```
 
-# Model using ROSE for balancing
+# Models using ROSE for balancing
 
 Split train/test, then balance using ROSE. Note: these have been run and the resulting train/test split has been saved. DO NOT RUN AGAIN so that we can continue to use the same train/test split on all other models, sampling techniques, etc. 
 
 ```{r}
-set.seed(48298)
-
 #split training and testing; stratify based on y_bin (roughly 90-10 split)
 #split <- initial_split(data, prop = 0.7, strata = "y_bin")
 #train <- split %>% training()
@@ -90,11 +91,11 @@ set.seed(48298)
 # read in oversampled train using ROSE and the test set created above
 train_rose <- read_csv("../data/final/train_rose_sampling.csv") %>% 
   clean_names() %>% 
-  mutate(y_bin = as.factor(y_bin))
+  mutate(y_bin = factor(y_bin, levels = c(1, 0)))
 
 test <- read_csv("../data/final/test_original_sampling.csv") %>% 
   clean_names() %>% 
-  mutate(y_bin = as.factor(y_bin))
+  mutate(y_bin = factor(y_bin, levels = c(1, 0)))
 ```
 
 Call model w/tuning grid
@@ -103,7 +104,7 @@ Call model w/tuning grid
 #stratified cross-validation
 rose_cv <- vfold_cv(data = train_rose, v = 5, strata = y_bin)
 
-#call model over grid search
+#call model over grid search for RF
 rose_rf_call <- tune_grid(
   rf_wf,
   grid = rf_grid,
@@ -112,6 +113,7 @@ rose_rf_call <- tune_grid(
   metrics = metric_set(accuracy, roc_auc, sens, spec)
 )
 
+#call model over grid search for RF
 rose_knn_call <- tune_grid(
   knn_wf,
   grid = knn_grid,
@@ -125,55 +127,46 @@ Model metrics:
 
 ```{r}
 #model metrics
+# rf
 rose_rf_metrics <- rose_rf_call %>% collect_metrics()
-
-rose_knn_metrics <- rose_knn_call %>% collect_metrics()
-
 rose_rf_metrics <- rose_rf_metrics %>% select(-std_err) %>% 
   pivot_wider(names_from = .metric, values_from = mean)
 
+# knn
+rose_knn_metrics <- rose_knn_call %>% collect_metrics()
 rose_knn_metrics <- rose_knn_metrics %>% select(-std_err) %>% 
   pivot_wider(names_from = .metric, values_from = mean)
 
 #find best model based on different metrics
+# rf
 rose_rf_best_accuracy <- rose_rf_metrics %>% filter(accuracy == max(accuracy)) 
 rose_rf_best_roc_auc <- rose_rf_metrics %>% filter(roc_auc == max(roc_auc)) 
 rose_rf_best_sens <- rose_rf_metrics %>% filter(sens == max(sens))  
 rose_rf_best_spec <- rose_rf_metrics %>% filter(spec == max(spec)) 
 
+#knn
 rose_knn_best_accuracy <- rose_rf_metrics %>% filter(accuracy == max(accuracy)) 
 rose_knn_best_roc_auc <- rose_rf_metrics %>% filter(roc_auc == max(roc_auc)) 
 rose_knn_best_sens <- rose_rf_metrics %>% filter(sens == max(sens))  
 rose_knn_best_spec <- rose_rf_metrics %>% filter(spec == max(spec)) 
-
 ```
 
 
 
-
-Select best model based on accuracy... I've never seen a train roc this good in my life... Overfitting???
+Select best based on sensitivity since we are most concerned with correctly identifying admitted patients
 
 ```{r}
+# best model
+# rf
 rose_rf_best <- rose_rf_call %>% 
-  select_best(metric = "sens")
+  select_best(metric = "roc_auc")
 
+# knn
 rose_knn_best <- rose_knn_call %>% 
   select_best(metric = "sens")
 
-rose_rf_auc <- 
-  rose_rf_call %>% 
-  collect_predictions(parameters = rose_rf_best) %>% 
-  roc_curve(y_bin, .pred_1) %>% 
-  mutate(model = "RF ROSE")
-
-rose_knn_auc <- 
-  rose_knn_call %>% 
-  collect_predictions(parameters = rose_knn_best) %>% 
-  roc_curve(y_bin, .pred_1) %>% 
-  mutate(model = "KNN ROSE")
-
-
-
+# train auc
+# rf
 rose_rf_auc %>% 
   ggplot(aes(x = sensitivity, y = 1-specificity, col = model)) + 
   geom_path(lwd = 1.5, alpha = 0.8) +
@@ -189,17 +182,23 @@ rose_knn_auc %>%
   scale_color_viridis_d(option = "plasma", end = .6)
 ```
 
+ROSE RF Test predictions: 
 
 ```{r}
+set.seed(345)
+
+# fit model
 rose_rf_wf <- rf_wf %>%
   finalize_workflow(rose_rf_best)
 
 rose_rf_fit <- fit(rose_rf_wf, train_rose)
 
+# test preds
 rose_rf_testing_pred <- 
   predict(rose_rf_fit, test) %>% 
   bind_cols(predict(rose_rf_fit, test, type = "prob")) %>% 
-  mutate(.pred_class = as.factor(ifelse(.pred_1 >= 0.4, 1, 0))) %>% 
+  mutate(.pred_class = ifelse(.pred_1 >= 0.4, 1, 0),
+         .pred_class = factor(.pred_class, levels = c(1, 0))) %>% 
   bind_cols(test %>% select(y_bin))
 
 # confusion matrix
@@ -208,9 +207,74 @@ rose_rf_testing_pred %>%
 
 # sensitivity 
 rose_rf_testing_pred %>%  
-  sens(truth = y_bin, .pred_class)
+  f_meas(truth = y_bin, .pred_class, beta = 1)
+  #sens(truth = y_bin, .pred_class)
+  #spec(truth = y_bin, .pred_class)
+  #accuracy(truth = y_bin, .pred_class)
 ```
 
+Feature importance
+
+
+```{r}
+rose_rf_vip <- rose_rf_fit %>% 
+  pull_workflow_fit() %>% 
+  vip(num_features = 10, 
+      aesthetics = c("fill" = "#AADBEE")) + 
+  labs(title = "Feature Importance") + 
+  theme_minimal() +
+  theme(plot.background = element_rect(fill = "#f9f9f9", color = NA),
+        axis.text.y = element_text(size = 14))
+
+#ggsave(rose_rf_vip, filename = "../presentation/graphics/rf_vip.png")#,  bg = #"transparent")
+
+#rose_rf_vip
+```
+
+Properties of predictions:
+
+```{r}
+rose_rf_testing_pred %>% bind_cols(test %>% select(-y_bin)) %>% 
+  filter(y_bin == 1) %>% 
+  pull(eosinophils) %>% 
+  summary()
+```
+
+```{r}
+rose_rf_testing_pred %>% bind_cols(test %>% select(-y_bin)) %>% 
+  filter(y_bin == 1) %>% 
+  pull(patient_age_quantile) %>% 
+  summary()
+```
+
+
+ROSE KNN test predictions:
+
+```{r}
+# fit model
+set.seed(456)
+rose_knn_wf <- knn_wf %>% finalize_workflow(rose_knn_best)
+rose_knn_fit <- fit(rose_knn_wf, train_rose)
+
+# get test preds 
+rose_knn_testing_pred <- 
+  predict(rose_knn_fit, test) %>% 
+  bind_cols(predict(rose_knn_fit, test, type = "prob")) %>% 
+  mutate(.pred_class = ifelse(.pred_1 >= 0.4, 1, 0),
+         .pred_class = factor(.pred_class, levels = c(1, 0))) %>%
+  bind_cols(test %>% select(y_bin))
+
+# confusion matrix
+rose_knn_testing_pred %>%  
+  conf_mat(truth = y_bin, .pred_class)
+
+# sensitivity 
+rose_knn_testing_pred %>%
+  f_meas(truth = y_bin, .pred_class, beta = 1)
+  #sens(truth = y_bin, .pred_class)
+  #spec(truth = y_bin, .pred_class)
+  #accuracy(truth = y_bin, .pred_class)
+```
 
 # Model using SMOTE for balancing
 
@@ -219,13 +283,17 @@ Read in smote
 ```{r}
 # read in SMOTE combined sampling (& original sampling)
 train_smote <- read_csv("../data/final/train_combined_sampling.csv") %>%
-  mutate(y_bin = as.factor(y_bin)) %>% select(-y_bin, everything(), y_bin, -...1)
+  mutate(y_bin = factor(y_bin, levels = c(1, 0))) %>%
+  select(-y_bin, everything(), y_bin, -X1)
 
-test <- read_csv("../data/final/test_original_sampling.csv") %>% mutate(y_bin = as.factor(y_bin)) 
+test <- read_csv("../data/final/test_original_sampling.csv") %>%
+  mutate(y_bin = factor(y_bin, levels = c(1, 0))) 
 ```
+
 Call model w/tuning grid
 
 ```{r}
+set.seed(2334)
 #stratified cross-validation
 smote_cv <- vfold_cv(data = train_smote, v = 5, strata = y_bin)
 
@@ -251,19 +319,19 @@ smote_knn_call <- tune_grid(
 Model metrics: 
 
 ```{r}
-#model metrics
+#model metrics RF
 smote_rf_metrics <- smote_rf_call %>% collect_metrics()
 
 smote_rf_metrics <- smote_rf_metrics %>% select(-std_err) %>% 
   pivot_wider(names_from = .metric, values_from = mean)
 
-#find best model based on different metrics
+#find best model based on different metrics RF
 smote_rf_best_accuracy <- smote_rf_metrics %>% filter(accuracy == max(accuracy)) 
 smote_rf_best_roc_auc <- smote_rf_metrics %>% filter(roc_auc == max(roc_auc)) 
 smote_rf_best_sens <- smote_rf_metrics %>% filter(sens == max(sens))  
 smote_rf_best_spec <- smote_rf_metrics %>% filter(spec == max(spec)) 
 
-#model metrics
+#model metrics KNN
 smote_knn_metrics <- smote_knn_call %>% collect_metrics()
 
 smote_knn_metrics <- smote_knn_metrics %>% select(-std_err) %>% 
@@ -273,7 +341,7 @@ smote_knn_metrics <- smote_knn_metrics %>% select(-std_err) %>%
 smote_knn_best_accuracy <- smote_knn_metrics %>% filter(accuracy == max(accuracy)) 
 smote_knn_best_roc_auc <- smote_knn_metrics %>% filter(roc_auc == max(roc_auc)) 
 smote_knn_best_sens <- smote_knn_metrics %>% filter(sens == max(sens))  
-smote_kn_best_spec <- smote_knn_metrics %>% filter(spec == max(spec)) 
+smote_kn_best_spec <- smote_knn_metrics %>% filter(spec == max(spec))  
 ```
 
 Select best model based on sens; overfitting?
@@ -285,6 +353,7 @@ smote_rf_best <- smote_rf_call %>%
 smote_knn_best <- smote_knn_call %>% 
   select_best(metric = "sens")
 
+# train auc/roc
 smote_rf_auc <- 
   smote_rf_call %>% 
   collect_predictions(parameters = smote_rf_best) %>% 
@@ -296,37 +365,22 @@ smote_knn_auc <-
   collect_predictions(parameters = smote_knn_best) %>% 
   roc_curve(y_bin, .pred_1) %>% 
   mutate(model = "KNN SMOTE")
-
-smote_rf_auc %>% 
-  ggplot(aes(x = sensitivity, y = 1-specificity, col = model)) + 
-  geom_path(lwd = 1.5, alpha = 0.8) +
-  geom_abline(lty = 3) + 
-  coord_equal() + 
-  scale_color_viridis_d(option = "plasma", end = .6)
-
-smote_knn_auc %>% 
-  ggplot(aes(x = sensitivity, y = 1-specificity, col = model)) + 
-  geom_path(lwd = 1.5, alpha = 0.8) +
-  geom_abline(lty = 3) + 
-  coord_equal() + 
-  scale_color_viridis_d(option = "plasma", end = .6)
 ```
 
-Preds 
+Preds RF 
 
 ```{r}
+# fit models RF 
+set.seed(22334)
 smote_rf_wf <- rf_wf %>% finalize_workflow(smote_rf_best)
-smote_knn_wf <- knn_wf %>% finalize_workflow(smote_knn_best)
-
-
 smote_rf_fit <- fit(smote_rf_wf, train_smote)
-smote_knn_fit <- fit(smote_knn_wf, train_smote)
 
-
+# test preds
 smote_rf_testing_pred <- 
   predict(smote_rf_fit, test) %>% 
   bind_cols(predict(smote_rf_fit, test, type = "prob")) %>% 
-  mutate(.pred_class = as.factor(ifelse(.pred_1 >= 0.4, 1, 0))) %>% 
+  mutate(.pred_class = ifelse(.pred_1 >= 0.4, 1, 0),
+         .pred_class = factor(.pred_class, levels = c(1, 0))) %>% 
   bind_cols(test %>% select(y_bin))
 
 # confusion matrix
@@ -338,4 +392,28 @@ smote_rf_testing_pred %>%
   sens(truth = y_bin, .pred_class)
 ```
 
+Test preds KNN
+
+```{r}
+# fit models KNN
+set.seed(976)
+smote_knn_wf <- knn_wf %>% finalize_workflow(smote_knn_best)
+smote_knn_fit <- fit(smote_knn_wf, train_smote)
+
+# test preds
+smote_knn_testing_pred <- 
+  predict(smote_knn_fit, test) %>% 
+  bind_cols(predict(smote_knn_fit, test, type = "prob")) %>% 
+  mutate(.pred_class = ifelse(.pred_1 >= 0.4, 1, 0),
+         .pred_class = factor(.pred_class, levels = c(1, 0))) %>%
+  bind_cols(test %>% select(y_bin))
+
+# confusion matrix
+smote_knn_testing_pred %>%  
+  conf_mat(truth = y_bin, .pred_class)
+
+# sensitivity 
+smote_knn_testing_pred %>%  
+  sens(truth = y_bin, .pred_class)
+```
 
