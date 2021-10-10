@@ -1,4 +1,6 @@
-# ds_case_1_team_2
+# Hospital Ward Admission Calculation
+
+### Contributors: Connor Mignone, Amanda Konet, Yilin Ye, Tonnar Castellano, Sarah Torrence
 
 ## Project Description
 This [dataset](https://www.kaggle.com/einsteindata4u/covid19) had two main tasks from the Hospital Israelita Albert Einstein: 1) Predict who will test positive 2) Predict who will go into the ICU
