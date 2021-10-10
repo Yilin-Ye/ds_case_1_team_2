@@ -13,7 +13,7 @@ to leverage [data](https://www.kaggle.com/einsteindata4u/covid19) to try and per
 
 We chose to focus on the second task of predicting which ward a covid positive patient will be admitted into.
 
-## Repo Description 
+## Directory 
 Here you can find a directory to all the files within our repo that were used in performing our analysis.
 
 ### [Data](https://github.com/Yilin-Ye/ds_case_1_team_2/tree/main/data)
