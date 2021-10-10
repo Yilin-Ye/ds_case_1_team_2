@@ -31,7 +31,7 @@ This folder contains the various efforts to explore the data such as lab test gr
 ### [Modeling](https://github.com/Yilin-Ye/ds_case_1_team_2/tree/main/modeling) 
 This folder contains the code for the random forest and k nearest neighboors models. The modeling.rmd file is the final modeling file. 
 
-## team updates.pdf
+## [Team Updates](https://github.com/Yilin-Ye/ds_case_1_team_2/blob/main/team%202%20updates.pdf)
 File containing brief summary of team updates given during weekly class updates.
 
 ## Results
