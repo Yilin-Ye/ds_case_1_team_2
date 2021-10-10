@@ -36,7 +36,7 @@ File containing brief summary of team updates given during weekly class updates.
 
 ## Results
 
-You can see details of our methods as well as final approach in our presentation, but to summarize we found the best model was a random forest model using Rose sampling and 5-fold cross validation with the following confusion matrix and test results. 
+You can see details of our methods as well as final approach in our [presentation](https://github.com/Yilin-Ye/ds_case_1_team_2/blob/main/Case1-Team2.pdf), but to summarize we found the best model was a random forest model using Rose sampling and 5-fold cross validation with the following confusion matrix and test results. 
 
 <img width="359" alt="image" src="https://user-images.githubusercontent.com/69755309/136696301-dd329f30-daca-493d-9ff8-f58e50f156fd.png">
 
